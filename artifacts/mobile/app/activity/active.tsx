@@ -1,9 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
 import { useColors } from '@/hooks/useColors';
 import { Ionicons } from '@expo/vector-icons';
 import { MapPlaceholder } from '@/components/ui/MapPlaceholder';
+
+interface Coord { latitude: number; longitude: number; }
+
+function haversineKm(a: Coord, b: Coord): number {
+  const R = 6371;
+  const dLat = ((b.latitude - a.latitude) * Math.PI) / 180;
+  const dLon = ((b.longitude - a.longitude) * Math.PI) / 180;
+  const x =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((a.latitude * Math.PI) / 180) *
+      Math.cos((b.latitude * Math.PI) / 180) *
+      Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+}
 
 function formatTime(s: number) {
   const h = Math.floor(s / 3600);
@@ -20,29 +34,43 @@ export default function ActiveActivityScreen() {
   const [distance, setDistance] = useState(0);
   const [hexes, setHexes] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const lastCoordRef = useRef<Coord | null>(null);
+  const pausedRef = useRef(false);
+
+  pausedRef.current = paused;
 
   useEffect(() => {
     timerRef.current = setInterval(() => {
-      if (!paused) {
-        setElapsed(p => p + 1);
-        setDistance(p => p + 0.003);
-        if (Math.random() > 0.97) setHexes(p => p + 1);
-      }
+      if (!pausedRef.current) setElapsed(p => p + 1);
     }, 1000);
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [paused]);
+  }, []);
+
+  function handleLocationUpdate(coord: Coord) {
+    if (pausedRef.current) return;
+    if (lastCoordRef.current) {
+      const km = haversineKm(lastCoordRef.current, coord);
+      if (km > 0.003) {
+        setDistance(d => d + km);
+        if (Math.random() > 0.85) setHexes(h => h + 1);
+      }
+    }
+    lastCoordRef.current = coord;
+  }
 
   const pace = distance > 0 ? elapsed / 60 / distance : 0;
 
   return (
     <View style={styles.container}>
-      <MapPlaceholder style={styles.map} />
+      <MapPlaceholder
+        style={styles.map}
+        onLocationUpdate={handleLocationUpdate}
+        trackRoute={!paused}
+      />
       <View style={styles.overlay}>
-        {/* Timer */}
         <View style={[styles.timerBox, { backgroundColor: 'rgba(15,23,42,0.9)' }]}>
           <Text style={styles.timer}>{formatTime(elapsed)}</Text>
         </View>
-        {/* Stats bar */}
         <View style={[styles.statsBar, { backgroundColor: 'rgba(15,23,42,0.9)' }]}>
           {[
             { label: 'KM', value: distance.toFixed(2) },
@@ -56,17 +84,21 @@ export default function ActiveActivityScreen() {
             </View>
           ))}
         </View>
-        {/* Controls */}
         <View style={styles.controls}>
-          <TouchableOpacity onPress={() => setPaused(p => !p)} style={[styles.pauseBtn, { backgroundColor: paused ? colors.accent : '#F59E0B' }]}>
+          <TouchableOpacity
+            onPress={() => setPaused(p => !p)}
+            style={[styles.pauseBtn, { backgroundColor: paused ? colors.accent : '#F59E0B' }]}
+          >
             <Ionicons name={paused ? 'play' : 'pause'} size={32} color="#FFF" />
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => router.replace('/activity/finish')} style={[styles.stopBtn, { backgroundColor: colors.destructive }]}>
+          <TouchableOpacity
+            onPress={() => router.replace('/activity/finish')}
+            style={[styles.stopBtn, { backgroundColor: colors.destructive }]}
+          >
             <Ionicons name="stop" size={24} color="#FFF" />
             <Text style={styles.stopText}>Finish</Text>
           </TouchableOpacity>
         </View>
-        {/* XP flash */}
         {hexes > 0 && (
           <View style={[styles.xpFlash, { backgroundColor: colors.accent }]}>
             <Text style={styles.xpFlashText}>+{hexes * 50} XP</Text>
@@ -76,6 +108,7 @@ export default function ActiveActivityScreen() {
     </View>
   );
 }
+
 const styles = StyleSheet.create({
   container: { flex: 1 },
   map: { ...StyleSheet.absoluteFillObject },
