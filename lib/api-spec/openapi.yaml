@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: activities
+    description: Activity operations
 paths:
   /healthz:
     get:
@@ -24,6 +26,45 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /activities:
+    get:
+      operationId: listActivities
+      tags: [activities]
+      summary: List activities
+      description: Returns all saved activities, newest first
+      responses:
+        "200":
+          description: List of activities
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Activity"
+    post:
+      operationId: createActivity
+      tags: [activities]
+      summary: Save an activity
+      description: Persists a completed activity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateActivityRequest"
+      responses:
+        "201":
+          description: Activity saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Activity"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +74,81 @@ components:
           type: string
       required:
         - status
-
+    Coord:
+      type: object
+      properties:
+        latitude:
+          type: number
+        longitude:
+          type: number
+      required:
+        - latitude
+        - longitude
+    Activity:
+      type: object
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+        distanceKm:
+          type: number
+        durationSec:
+          type: integer
+        hexesCaptured:
+          type: integer
+        calories:
+          type: integer
+        xpEarned:
+          type: integer
+        route:
+          type: array
+          items:
+            $ref: "#/components/schemas/Coord"
+        completedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - type
+        - distanceKm
+        - durationSec
+        - hexesCaptured
+        - calories
+        - xpEarned
+        - route
+        - completedAt
+    CreateActivityRequest:
+      type: object
+      properties:
+        type:
+          type: string
+          default: run
+        distanceKm:
+          type: number
+        durationSec:
+          type: integer
+        hexesCaptured:
+          type: integer
+        calories:
+          type: integer
+        xpEarned:
+          type: integer
+        route:
+          type: array
+          items:
+            $ref: "#/components/schemas/Coord"
+      required:
+        - distanceKm
+        - durationSec
+        - hexesCaptured
+        - calories
+        - xpEarned
+        - route
+    ApiError:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
