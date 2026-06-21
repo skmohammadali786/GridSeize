@@ -1,2 +1,3 @@
-- [Theme system](theme-system.md) — ThemeContext is the source of truth for light/dark; wraps outermost in _layout.tsx above AppProvider; default is 'light'.
-- [Settings screens](settings-screens.md) — All settings sub-routes exist as files; faq.tsx redirects to help; ScreenHeader uses rightLabel+onRightPress (no `right` prop).
+- [Babel types override](babel-types-override.md) — must pin @babel/types and @babel/generator to 7.x via pnpm.overrides or react-native-worklets web bundling breaks.
+- [Auth flow pattern](auth-flow.md) — AppContext starts unauthenticated; persists to @gridseize_auth_user key in AsyncStorage; index.tsx shows dark view while authLoading=true.
+- [White flash fix](white-flash-fix.md) — All Stack navigators need contentStyle.backgroundColor = colors.background (or colors.primary for auth dark screens) to prevent white flash on back navigation.
