@@ -1,0 +1,2 @@
+- [Theme system](theme-system.md) — ThemeContext is the source of truth for light/dark; wraps outermost in _layout.tsx above AppProvider; default is 'light'.
+- [Settings screens](settings-screens.md) — All settings sub-routes exist as files; faq.tsx redirects to help; ScreenHeader uses rightLabel+onRightPress (no `right` prop).

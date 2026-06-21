@@ -27,12 +27,22 @@ function formatTime(s: number) {
   return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
 }
 
+function simulateHR(elapsedSecs: number, paused: boolean): number {
+  if (paused) return 72;
+  const rampSecs = 180;
+  const t = Math.min(elapsedSecs, rampSecs) / rampSecs;
+  const base = 72 + Math.round(t * 78);
+  const jitter = Math.round(Math.sin(elapsedSecs * 0.3) * 4 + Math.random() * 3);
+  return Math.min(base + jitter, 185);
+}
+
 export default function ActiveActivityScreen() {
   const colors = useColors();
   const [elapsed, setElapsed] = useState(0);
   const [paused, setPaused] = useState(false);
   const [distance, setDistance] = useState(0);
   const [hexes, setHexes] = useState(0);
+  const [heartRate, setHeartRate] = useState(72);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastCoordRef = useRef<Coord | null>(null);
   const pausedRef = useRef(false);
@@ -41,7 +51,13 @@ export default function ActiveActivityScreen() {
 
   useEffect(() => {
     timerRef.current = setInterval(() => {
-      if (!pausedRef.current) setElapsed(p => p + 1);
+      if (!pausedRef.current) {
+        setElapsed(p => {
+          const next = p + 1;
+          setHeartRate(simulateHR(next, false));
+          return next;
+        });
+      }
     }, 1000);
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, []);
@@ -84,6 +100,17 @@ export default function ActiveActivityScreen() {
             </View>
           ))}
         </View>
+        {/* Heart rate */}
+        <View style={[styles.hrBar, { backgroundColor: 'rgba(15,23,42,0.9)' }]}>
+          <Ionicons name="heart" size={18} color={heartRate > 140 ? '#EF4444' : '#F59E0B'} />
+          <Text style={styles.hrVal}>{heartRate}</Text>
+          <Text style={styles.hrUnit}>BPM</Text>
+          <View style={[styles.hrZone, { backgroundColor: heartRate > 160 ? '#EF444430' : heartRate > 140 ? '#F59E0B30' : '#22C55E30' }]}>
+            <Text style={[styles.hrZoneText, { color: heartRate > 160 ? '#EF4444' : heartRate > 140 ? '#F59E0B' : '#22C55E' }]}>
+              {heartRate > 160 ? 'Zone 5' : heartRate > 140 ? 'Zone 4' : heartRate > 120 ? 'Zone 3' : heartRate > 100 ? 'Zone 2' : 'Zone 1'}
+            </Text>
+          </View>
+        </View>
         <View style={styles.controls}>
           <TouchableOpacity
             onPress={() => setPaused(p => !p)}
@@ -125,4 +152,9 @@ const styles = StyleSheet.create({
   stopText: { fontSize: 16, fontFamily: 'Inter_700Bold', color: '#FFF' },
   xpFlash: { position: 'absolute', top: 120, right: 20, paddingHorizontal: 14, paddingVertical: 6, borderRadius: 100 },
   xpFlashText: { fontSize: 14, fontFamily: 'Inter_700Bold', color: '#FFF' },
+  hrBar: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 14 },
+  hrVal: { fontSize: 28, fontFamily: 'Inter_700Bold', color: '#FFF' },
+  hrUnit: { fontSize: 12, fontFamily: 'Inter_600SemiBold', color: 'rgba(255,255,255,0.6)', letterSpacing: 1, marginTop: 4 },
+  hrZone: { marginLeft: 'auto', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 100 },
+  hrZoneText: { fontSize: 13, fontFamily: 'Inter_700Bold' },
 });
